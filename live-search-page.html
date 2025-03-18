@@ -129,7 +129,7 @@
         
         // Function to load the specific text file
         function loadHebrewTextFile() {
-            fetch('https://raw.githubusercontent.com/cherizli/NAS/refs/heads/master/HebrewText.txt')
+            fetch('https://raw.githubusercontent.com/cherizli/SearchInText/refs/heads/main/HebrewText.txt')
                 .then(response => {
                     if (!response.ok) {
                         throw new Error(`Failed to load file (${response.status}: ${response.statusText})`);
