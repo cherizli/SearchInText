@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Live Text Search</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            color: #333;
+            direction: rtl;
+        }
+        
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            text-align: right;
+        }
+        
+        header {
+            background-color: #fff;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            padding: 15px 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        
+        .search-container {
+            display: flex;
+            max-width: 760px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+        
+        #searchInput {
+            flex: 1;
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            outline: none;
+            transition: border-color 0.3s;
+            text-align: right;
+            direction: rtl;
+        }
+        
+        #searchInput:focus {
+            border-color: #4d90fe;
+            box-shadow: 0 0 5px rgba(77,144,254,0.2);
+        }
+        
+        #results {
+            margin-top: 20px;
+            line-height: 1.6;
+        }
+        
+        .result-line {
+            background-color: #fff;
+            padding: 12px 15px;
+            margin-bottom: 10px;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.1s;
+            text-align: right;
+            direction: rtl;
+        }
+        
+        .result-line:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 3px 5px rgba(0,0,0,0.15);
+        }
+        
+        .highlight {
+            background-color: #fff499;
+            padding: 2px 0;
+        }
+        
+        .status {
+            text-align: center;
+            color: #666;
+            font-size: 14px;
+            margin: 15px 0;
+        }
+        
+        .no-results {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+            padding: 20px;
+        }
+        
+        .error-message {
+            background-color: #fff0f0;
+            color: #d32f2f;
+            padding: 15px;
+            border-radius: 4px;
+            text-align: center;
+            margin: 15px 0;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <div class="search-container">
+            <input type="text" id="searchInput" placeholder="חיפוש טקסט..." autocomplete="off">
+        </div>
+    </header>
+    
+    <div class="container">
+        <div id="status" class="status">טוען את HebrewText.txt...</div>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        // Initialize variables
+        let textContent = '';
+        let lines = [];
+        const resultsContainer = document.getElementById('results');
+        const searchInput = document.getElementById('searchInput');
+        const statusElement = document.getElementById('status');
+        
+        // Function to parse text content into lines
+        function parseTextContent(content) {
+            textContent = content;
+            lines = content.split('\n');
+            statusElement.textContent = `נטענו ${lines.length} שורות מ-HebrewText.txt`;
+            // Initial blank search to show the setup is ready
+            performSearch();
+        }
+        
+        // Function to load the specific text file
+        function loadHebrewTextFile() {
+            fetch('https://raw.githubusercontent.com/cherizli/SearchInText/refs/heads/main/HebrewText.txt')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Failed to load file (${response.status}: ${response.statusText})`);
+                    }
+                    return response.text();
+                })
+                .then(content => {
+                    parseTextContent(content);
+                })
+                .catch(error => {
+                    console.error('Error loading file:', error);
+                    const errorMessage = document.createElement('div');
+                    errorMessage.className = 'error-message';
+                    errorMessage.textContent = `שגיאה בטעינת HebrewText.txt: ${error.message}`;
+                    statusElement.parentNode.insertBefore(errorMessage, resultsContainer);
+                    statusElement.textContent = 'טעינת הקובץ נכשלה. משתמש בטקסט לדוגמה במקום.';
+                    
+                    // Load sample text as fallback (in Hebrew)
+                    const sampleText = `זהו טקסט לדוגמה מכיוון ש-HebrewText.txt לא ניתן לטעינה.
+ניתן עדיין לבדוק את פונקציונליות החיפוש עם טקסט זה.
+נסה לחפש מילים כמו "טקסט" או "חיפוש".
+ודא ש-HebrewText.txt נמצא באותה תיקייה כמו קובץ ה-HTML הזה.
+הקובץ צריך להיות נגיש דרך שרת האינטרנט.`;
+                    parseTextContent(sampleText);
+                });
+        }
+
+        // Highlight matching text
+        function highlightText(text, searchTerm) {
+            if (!searchTerm) return text;
+            
+            // Escape special regex characters
+            const escapedSearchTerm = searchTerm.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            const regex = new RegExp(`(${escapedSearchTerm})`, 'gi');
+            return text.replace(regex, '<span class="highlight">$1</span>');
+        }
+
+        // Perform search function
+        function performSearch() {
+            const searchTerm = searchInput.value.trim();
+            resultsContainer.innerHTML = '';
+            
+            if (!searchTerm) {
+                statusElement.textContent = lines.length > 0 ? 
+                    `נטענו ${lines.length} שורות מ-HebrewText.txt. הקלד לחיפוש.` : 
+                    'טוען את HebrewText.txt...';
+                return;
+            }
+            
+            let matchCount = 0;
+            
+            lines.forEach(line => {
+                if (line.toLowerCase().includes(searchTerm.toLowerCase())) {
+                    matchCount++;
+                    const div = document.createElement('div');
+                    div.className = 'result-line';
+                    div.innerHTML = highlightText(line, searchTerm);
+                    resultsContainer.appendChild(div);
+                }
+            });
+            
+            if (matchCount === 0) {
+                resultsContainer.innerHTML = '<div class="no-results">לא נמצאו שורות תואמות</div>';
+            }
+            
+            statusElement.textContent = `נמצאו ${matchCount} שורות תואמות ב-HebrewText.txt`;
+        }
+
+        // Attach input event to search input for real-time search
+        searchInput.addEventListener('input', performSearch);
+
+        // Load the HebrewText.txt file when the page loads
+        document.addEventListener('DOMContentLoaded', loadHebrewTextFile);
+
+        // Setup drag and drop for alternative file loading
+        document.body.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            document.body.style.backgroundColor = '#e9f5ff';
+        });
+
+        document.body.addEventListener('dragleave', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            document.body.style.backgroundColor = '#f5f5f5';
+        });
+
+        document.body.addEventListener('drop', (e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            document.body.style.backgroundColor = '#f5f5f5';
+            
+            if (e.dataTransfer.files.length) {
+                const file = e.dataTransfer.files[0];
+                if (file.type === 'text/plain') {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        parseTextContent(e.target.result);
+                        statusElement.textContent = `נטען קובץ מותאם אישית: ${file.name} (${lines.length} שורות)`;
+                    };
+                    reader.readAsText(file);
+                } else {
+                    statusElement.textContent = 'אנא שחרר קובץ טקסט (.txt)';
+                }
+            }
+        });
+    </script>
+</body>
+</html>
